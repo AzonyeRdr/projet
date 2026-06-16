@@ -1,2 +1,4 @@
-com/dirkfw/App.class
-com/dirkfw/servlet/WelcomeServlet.class
+mg/nathafw/servlet/FrontController.class
+mg/nathafw/App.class
+mg/nathafw/util/ClasspathScanner.class
+mg/nathafw/annotation/MyController.class

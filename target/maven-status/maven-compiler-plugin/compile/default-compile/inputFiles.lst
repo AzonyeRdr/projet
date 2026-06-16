@@ -1,2 +1,4 @@
-/home/tomefy/Documents/web_dyn/springscratch/src/main/java/com/dirkfw/App.java
-/home/tomefy/Documents/web_dyn/springscratch/src/main/java/com/dirkfw/servlet/WelcomeServlet.java
+/home/azonye/Documents/Programs/L2/S4/web dynamique/NathaFw/src/main/java/mg/nathafw/App.java
+/home/azonye/Documents/Programs/L2/S4/web dynamique/NathaFw/src/main/java/mg/nathafw/annotation/MyController.java
+/home/azonye/Documents/Programs/L2/S4/web dynamique/NathaFw/src/main/java/mg/nathafw/servlet/FrontController.java
+/home/azonye/Documents/Programs/L2/S4/web dynamique/NathaFw/src/main/java/mg/nathafw/util/ClasspathScanner.java
