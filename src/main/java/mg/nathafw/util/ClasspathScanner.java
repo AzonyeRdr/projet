@@ -3,16 +3,18 @@ package mg.nathafw.util;
 import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-public class ClasspathScanner {    
+public class ClasspathScanner {
     /**
      *
      * @param packageName     nom complet du package (ex: "mg.nathafw")
@@ -26,22 +28,24 @@ public class ClasspathScanner {
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         String packagePath = (packageName == null || packageName.isEmpty())
                 ? ""
-                : packageName.replace('.', '/'); //Remplace le package en chemin
+                : packageName.replace('.', '/'); // Remplace le package en chemin
 
-        Enumeration<URL> resources = classLoader.getResources(packagePath); //Charge toutes les ressources de ce package
+        Enumeration<URL> resources = classLoader.getResources(packagePath); // Charge toutes les ressources de ce
+                                                                            // package
         while (resources.hasMoreElements()) {
             URL resource = resources.nextElement();
             String protocol = resource.getProtocol();
             if ("file".equals(protocol)) {
 
                 File dir = new File(URLDecoder.decode(resource.getFile(), StandardCharsets.UTF_8));
-                scanDirectory(dir, packageName, annotationClass, result); //Si c'est un fichier ou dossier
+                scanDirectory(dir, packageName, annotationClass, result); // Si c'est un fichier ou dossier
 
             } else if ("jar".equals(protocol)) {
 
-                String jarPath = resource.getFile().substring(5, resource.getFile().indexOf('!')); //Retourne le chemin absolu du jar
+                String jarPath = resource.getFile().substring(5, resource.getFile().indexOf('!')); // Retourne le chemin
+                                                                                                   // absolu du jar
                 try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8))) {
-                    scanJar(jar, packageName, annotationClass, result); //Si c'est une archive
+                    scanJar(jar, packageName, annotationClass, result); // Si c'est une archive
                 }
             }
         }
@@ -59,8 +63,8 @@ public class ClasspathScanner {
 
         for (File file : files) {
             if (file.isDirectory()) {
-                String sousPackage = packageName == null ? file.getName() : packageName + "." + file.getName(); 
-                scanDirectory(file, sousPackage, annotationClass, result); //Récursif si le file est un dossier
+                String sousPackage = packageName == null ? file.getName() : packageName + "." + file.getName();
+                scanDirectory(file, sousPackage, annotationClass, result); // Récursif si le file est un dossier
             } else if (file.getName().endsWith(".class")) {
                 String className = packageName == null
                         ? file.getName().substring(0, file.getName().length() - 6)
@@ -76,7 +80,7 @@ public class ClasspathScanner {
     private static void scanJar(JarFile jar, String packageName,
             Class<? extends Annotation> annotationClass,
             List<Class<?>> result) throws ClassNotFoundException {
-        Enumeration<JarEntry> entries = jar.entries(); //Récupérer les éléments du jar
+        Enumeration<JarEntry> entries = jar.entries(); // Récupérer les éléments du jar
 
         while (entries.hasMoreElements()) {
             JarEntry entry = entries.nextElement();
@@ -91,5 +95,23 @@ public class ClasspathScanner {
                 }
             }
         }
+    }
+
+    public static HashMap<Class<?>, List<Method>> scanClass(List<Class<?>> classes,
+            Class<? extends Annotation> annotation) {
+
+        HashMap<Class<?>, List<Method>> retour = new HashMap<>();
+        for (Class<?> class1 : classes) {
+            List<Method> methodeList = new ArrayList<>();
+            Method[] methods = class1.getDeclaredMethods();
+            
+            for (Method m : methods) {
+                if (m.isAnnotationPresent(annotation)) {
+                    methodeList.add(m);
+                }
+            }
+            retour.put(class1, methodeList);
+        }
+        return null;
     }
 }
