@@ -17,13 +17,15 @@ import mg.nathafw.annotation.URLAnnotation;
 
 public class FrontController extends HttpServlet {
     // List<Class<?>> list = new ArrayList<>();
-    HashMap<Class<?>, List<Method>> method = new HashMap<>();
+    // HashMap<Class<?>, List<Method>> method = new HashMap<>();
+    HashMap<String,List<Method>> httpMethods = new HashMap<>();
 
     @Override
     public void init() {
         try {
             List<Class<?>> list = mg.nathafw.util.ClasspathScanner.getClassesAnnotatedWith(MyController.class, "");
-            method = mg.nathafw.util.ClasspathScanner.scanClass(list, URLAnnotation.class);
+            // method = mg.nathafw.util.ClasspathScanner.scanClass(list, URLAnnotation.class);
+            httpMethods = mg.nathafw.util.ClasspathScanner.scanMethodsByHTTPType(list,URLAnnotation.class);
         } catch (Exception e) {
 
         }
@@ -36,15 +38,23 @@ public class FrontController extends HttpServlet {
         out.println("<html><body>");
         out.println("<p>Bienvenue dans Natha-FrameWork: " + request.getRequestURL().toString() + "</p>");
         out.println("<ul>");
-        for (Map.Entry<Class<?>, List<Method>> entry : method.entrySet()) {
-            Class<?> clazz = entry.getKey();
-            List<Method> methods = entry.getValue();
-            out.println("<li>"+(clazz.getName())+"</li>");
+        // for (Map.Entry<Class<?>, List<Method>> entry : method.entrySet()) {
+        //     Class<?> clazz = entry.getKey();
+        //     List<Method> methods = entry.getValue();
+        //     out.println("<li>"+(clazz.getName())+"</li>");
+        //     out.println("<ul>");
+        //     if (methods != null) {
+        //         for (Method m : methods) {
+        //             out.println("<li>" + (m.getName()) + "</li>");
+        //         }
+        //     }
+        //     out.println("</ul>");
+        // }
+        for (String key : httpMethods.keySet()) {
+            out.println("<li>" + key + "</li>");
             out.println("<ul>");
-            if (methods != null) {
-                for (Method m : methods) {
-                    out.println("<li>" + (m.getName()) + "</li>");
-                }
+            for (Method m : httpMethods.get(key)) {
+                out.println("<li>" + m.getName() + "</li>");
             }
             out.println("</ul>");
         }

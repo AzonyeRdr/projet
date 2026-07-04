@@ -11,8 +11,11 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import mg.nathafw.annotation.URLAnnotation;
+import mg.nathafw.mapping.HTTPMethod;
 
 public class ClasspathScanner {
     /**
@@ -112,6 +115,29 @@ public class ClasspathScanner {
             }
             retour.put(class1, methodeList);
         }
-        return null;
+        return retour;
+    }
+
+    public static HashMap<String, List<Method>> scanMethodsByHTTPType(List<Class<?>> classes,Class<? extends Annotation> annotation) {
+        HashMap<String, List<Method>> result = new HashMap<>();
+        result.put("GET", new ArrayList<>());
+        result.put("POST", new ArrayList<>());
+
+        for (Class<?> clazz : classes) {
+            Method[] methods = clazz.getDeclaredMethods();
+            for (Method method : methods) {
+                if (method.isAnnotationPresent(URLAnnotation.class)) {
+                    URLAnnotation urlAnnotation = (URLAnnotation) method.getAnnotation(annotation);
+                    HTTPMethod httpMethod = urlAnnotation.httpMethod();
+                    
+                    if (httpMethod == HTTPMethod.GET) {
+                        result.get("GET").add(method);
+                    } else if (httpMethod == HTTPMethod.POST) {
+                        result.get("POST").add(method);
+                    }
+                }
+            }
+        }
+        return result;
     }
 }
