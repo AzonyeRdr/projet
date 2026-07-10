@@ -18,7 +18,6 @@ public class URLProcessor implements AnnotatedClassesProcessor {
 
     @Override
     public void processAnnotatedClass(Class<?> clazz) throws ReflectiveOperationException, URLAlreadyDefinedException {
-
         if (clazz.isAnnotationPresent(MyController.class)) {
             controllerClasses.add(clazz);
             for (Method method : clazz.getDeclaredMethods()) {
@@ -37,13 +36,13 @@ public class URLProcessor implements AnnotatedClassesProcessor {
         }
     }
 
-    public void executeRequest(URLKey url)
+    public Object executeRequest(URLKey url)
             throws URLNotSupportedException, ReflectiveOperationException {
         if (!this.getUrlMaps().containsKey(url)) {
             throw new URLNotSupportedException(url, urlMaps);
         }
         URLControllerMap map = this.getUrlMaps().get(url);
-        map.getReflectMethod().invoke(map.getPrototypeSeed());
+        return map.getReflectMethod().invoke(map.getPrototypeSeed());
     }
 
     public List<Class<?>> getControllerClasses() {

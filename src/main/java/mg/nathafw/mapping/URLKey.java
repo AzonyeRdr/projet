@@ -1,7 +1,6 @@
 package mg.nathafw.mapping;
 
 public class URLKey {
-    
     private String urlString;
     private HTTPMethod methodHttp;
 
