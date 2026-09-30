@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_1.xsd" version="6.1">
+    <display-name>NathaFw Demo</display-name>
+
+    <servlet>
+        <servlet-name>front-controller</servlet-name>
+        <servlet-class>mg.nathafw.servlet.FrontController</servlet-class>
+        <init-param>
+            <param-name>CONTROLLER_PACKAGE</param-name>
+            <param-value>com.nathafw.demo.controller</param-value>
+        </init-param>
+        <init-param>
+            <param-name>VIEW_PATH</param-name>
+            <param-value>/WEB-INF/views</param-value>
+        </init-param>
+        <init-param>
+            <param-name>VIEW_EXTENSIONS</param-name>
+            <param-value>jsp,html</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>front-controller</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+</web-app>
