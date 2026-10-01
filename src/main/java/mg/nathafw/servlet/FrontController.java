@@ -2,8 +2,11 @@ package mg.nathafw.servlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -45,15 +48,6 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    private Object executeRequest(HttpServletRequest request)
-            throws URLNotSupportedException, ReflectiveOperationException {
-
-        String url = getRequestedUrl(request);
-        HTTPMethod method = HTTPMethod.buildHTTPMethod(request.getMethod());
-
-        return urlProcessor.executeRequest(new URLKey(url, method));
-    }
-
     private String getRequestedUrl(HttpServletRequest request) {
         String uri = request.getRequestURI();
         String context = request.getContextPath();
@@ -76,8 +70,15 @@ public class FrontController extends HttpServlet {
             throws ServletException, IOException {
 
         try {
-            Object result = executeRequest(request);
-            if (result instanceof ModelView modelView) {
+            String url = getRequestedUrl(request);
+            HTTPMethod method = HTTPMethod.buildHTTPMethod(request.getMethod());
+            URLKey key = new URLKey(url, method);
+
+            Object result = urlProcessor.executeRequest(key);
+
+            if (urlProcessor.isAPIRequest(key)) {
+                sendJSONResponse(response, result);
+            } else if (result instanceof ModelView modelView) {
                 renderModelView(request, response, modelView);
             } else {
                 response.setContentType("text/html");
@@ -88,6 +89,114 @@ public class FrontController extends HttpServlet {
         } catch (ReflectiveOperationException e) {
             throw new ServletException("Unable to execute the controller method", e);
         }
+    }
+
+    private void sendJSONResponse(HttpServletResponse response, Object result)
+            throws IOException {
+        response.setContentType("application/json; charset=UTF-8");
+        PrintWriter out = response.getWriter();
+        String jsonResponse = convertToJson(result);
+        out.print(jsonResponse);
+        out.flush();
+    }
+
+    private String convertToJson(Object result) {
+        if (result == null) {
+            return "null";
+        }
+
+        // String
+        if (result instanceof String) {
+            return "\"" + escapeJsonString((String) result) + "\"";
+        }
+
+        // Number
+        if (result instanceof Number) {
+            return result.toString();
+        }
+
+        // Boolean
+        if (result instanceof Boolean) {
+            return result.toString();
+        }
+
+        // Liste
+        if (result instanceof List<?> list) {
+            StringBuilder json = new StringBuilder("[");
+
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) {
+                    json.append(",");
+                }
+                json.append(convertToJson(list.get(i)));
+            }
+
+            json.append("]");
+            return json.toString();
+        }
+
+        // Map
+        if (result instanceof Map<?, ?> map) {
+            StringBuilder json = new StringBuilder("{");
+
+            int i = 0;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (i++ > 0) {
+                    json.append(",");
+                }
+
+                json.append("\"")
+                        .append(escapeJsonString(String.valueOf(entry.getKey())))
+                        .append("\":");
+
+                json.append(convertToJson(entry.getValue()));
+            }
+
+            json.append("}");
+            return json.toString();
+        }
+        
+        return objectToJson(result);
+    }
+
+    private String objectToJson(Object obj) {
+        StringBuilder json = new StringBuilder("{");
+
+        Field[] fields = obj.getClass().getDeclaredFields();
+
+        int i = 0;
+
+        for (Field field : fields) {
+            try {
+                field.setAccessible(true);
+
+                Object value = field.get(obj);
+
+                if (i++ > 0) {
+                    json.append(",");
+                }
+
+                json.append("\"")
+                        .append(escapeJsonString(field.getName()))
+                        .append("\":");
+
+                json.append(convertToJson(value));
+
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        json.append("}");
+        return json.toString();
+    }
+
+    private String escapeJsonString(String str) {
+        return str.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     private void renderModelView(
@@ -186,12 +295,11 @@ public class FrontController extends HttpServlet {
             out.println("<li>" + key.getMethodHttp() + " " + key.getUrlString() + "</li>");
         }
         out.println("</ul>");
-    }
-
-    private void printError(PrintWriter out, String errorMessage) {
-        out.println("<html><body>");
-        out.println("<h1>Erreur !</h1>");
-        out.println("<p>" + errorMessage + "</p>");
-        out.println("</body></html>");
+        out.println("<h2>APIs mappées :</h2>");
+        out.println("<ul>");
+        for (URLKey key : urlProcessor.getApiMaps().keySet()) {
+            out.println("<li>" + key.getMethodHttp() + " " + key.getUrlString() + " (API)</li>");
+        }
+        out.println("</ul>");
     }
 }

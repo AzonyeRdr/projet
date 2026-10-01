@@ -16,8 +16,8 @@ public class TestApiController {
     }
 
     @APIAnnotation(value = "/api/test",httpMethod = HTTPMethod.GET)
-    public int test(){
-        return 2;
+    public Test test(){
+        return new Test(2,"Alice");
     }
 
     @APIAnnotation(value = "/api/sum", httpMethod = HTTPMethod.POST)

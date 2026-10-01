@@ -2,20 +2,22 @@
 
 TOMCAT_PATH="/opt/tomcat"
 
-echo "Construction du projet..."
-mvn clean package
+echo "Construction et installation du framework dans le dépôt local..."
+mvn -f . clean install
 
-JAR_FILE=$(find target -name "*.jar" \
+FRAMEWORK_JAR=$(find ./target -maxdepth 1 -type f -name "*.jar" \
     ! -name "*sources*" \
     ! -name "*javadoc*" \
     ! -name "original-*" | head -n 1)
 
-if [ -z "$JAR_FILE" ]; then
-    echo "Aucun JAR trouvé."
-    exit 1
+if [ -n "$FRAMEWORK_JAR" ]; then
+    echo "Copie du JAR du framework vers Tomcat..."
+    cp "$FRAMEWORK_JAR" "$TOMCAT_PATH/lib/"
+    echo "JAR deployé : $FRAMEWORK_JAR"
+else
+    echo "Aucun JAR framework trouvé dans ./target."
 fi
 
-echo "Copie du JAR vers Tomcat..."
-cp "$JAR_FILE" "$TOMCAT_PATH/lib/"
-
-echo "Déploiement terminé : $JAR_FILE"
+# Déployer aussi le WAR de demo-app (si présent)
+cd demo-app
+./deploy.sh
