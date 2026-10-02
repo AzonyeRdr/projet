@@ -19,6 +19,9 @@
         <a class="card" href="${pageContext.request.contextPath}/products/featured">
             <h2>Objet dans le modèle</h2><p>Affichage d'un produit complet avec EL.</p>
         </a>
+        <a class="card" href="${pageContext.request.contextPath}/products/create">
+            <h2>Création de produit</h2><p>Formulaire pour créer un nouveau produit.</p>
+        </a>
         <a class="card" href="${pageContext.request.contextPath}/about">
             <h2>Vue HTML</h2><p>Validation de l'extension HTML autorisée.</p>
         </a>
