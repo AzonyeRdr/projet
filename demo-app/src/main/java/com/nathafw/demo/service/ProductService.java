@@ -14,4 +14,11 @@ public class ProductService {
     public Product findFeatured() {
         return findAll().get(0);
     }
+
+    public Product findById(int id) {
+        return findAll().stream()
+                .filter(p -> p.getId() == id)
+                .findFirst()
+                .orElse(null);
+    }
 }

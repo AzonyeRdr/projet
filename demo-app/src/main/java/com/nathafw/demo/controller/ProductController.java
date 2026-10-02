@@ -3,6 +3,7 @@ package com.nathafw.demo.controller;
 import com.nathafw.demo.model.Product;
 import com.nathafw.demo.service.ProductService;
 import mg.nathafw.annotation.MyController;
+import mg.nathafw.annotation.Param;
 import mg.nathafw.annotation.URLAnnotation;
 import mg.nathafw.mapping.HTTPMethod;
 import mg.nathafw.util.ModelView;
@@ -31,5 +32,18 @@ public class ProductController {
         return new ModelView("status/success.jsp")
                 .add("title", "Route POST exécutée")
                 .add("message", "Le framework a correctement distingué POST /products/create.");
+    }
+
+    @URLAnnotation(value = "/test", httpMethod = HTTPMethod.GET)
+    public ModelView findByid(@Param("id") int id) {
+        Product product = productService.findById(id);
+        if (product == null) {
+            return new ModelView("status/error.jsp")
+                    .add("title", "Produit non trouvé")
+                    .add("message", "Le produit avec l'ID " + id + " n'a pas été trouvé.");
+        }
+        return new ModelView("products/test.jsp")
+                .add("product", product)
+                .add("statusLabel", product.available() ? "Disponible" : "Indisponible");
     }
 }

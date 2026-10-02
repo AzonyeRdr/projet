@@ -3,6 +3,7 @@ package com.nathafw.demo.controller;
 import mg.nathafw.annotation.MyController;
 
 import com.nathafw.demo.model.Test;
+import com.nathafw.demo.service.TestService;
 
 import mg.nathafw.annotation.APIAnnotation;
 import mg.nathafw.mapping.HTTPMethod;
@@ -22,7 +23,6 @@ public class TestApiController {
 
     @APIAnnotation(value = "/api/sum", httpMethod = HTTPMethod.POST)
     public String sum() {
-        // For testing, return fixed JSON-like string; real param parsing not implemented
-        return "{\"result\": 3}";
+        return "3";
     }
 }
