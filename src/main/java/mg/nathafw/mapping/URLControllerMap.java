@@ -4,8 +4,8 @@ import java.lang.reflect.Method;
 
 public class URLControllerMap {
 
-    private Method reflectMethod;
     private Class<?> controllerClasses;
+    private Method reflectMethod;
 
     public URLControllerMap(Method reflectMethod, Class<?> controllerClasses) {
         this.reflectMethod = reflectMethod;

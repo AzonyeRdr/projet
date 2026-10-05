@@ -1,9 +1,9 @@
 package mg.nathafw.mapping;
 
 public class URLKey {
-    
     private String urlString;
     private HTTPMethod methodHttp;
+    
 
     public URLKey(String urlString, HTTPMethod methodHttp) {
         this.urlString = urlString;
