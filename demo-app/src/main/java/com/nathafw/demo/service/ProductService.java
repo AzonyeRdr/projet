@@ -1,14 +1,29 @@
 package com.nathafw.demo.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import com.nathafw.demo.model.Product;
 
 public class ProductService {
-    public List<Product> findAll() {
-        return List.of(
+    private static ProductService instance;
+    private List<Product> products;
+
+    private ProductService() {
+        products = new ArrayList<>(List.of(
                 new Product(1, "Clavier mécanique", "Informatique", 185_000, true),
                 new Product(2, "Souris sans fil", "Informatique", 95_000, true),
-                new Product(3, "Casque audio", "Audio", 140_000, false));
+                new Product(3, "Casque audio", "Audio", 140_000, false)));
+    }
+
+    public static ProductService getInstance() {
+        if (instance == null) {
+            instance = new ProductService();
+        }
+        return instance;
+    }
+
+    public List<Product> findAll() {
+        return products;
     }
 
     public Product findFeatured() {
@@ -20,5 +35,9 @@ public class ProductService {
                 .filter(p -> p.getId() == id)
                 .findFirst()
                 .orElse(null);
+    }
+
+    public void create(Product product) {
+        products.add(product);
     }
 }

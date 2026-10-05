@@ -1,5 +1,6 @@
 package mg.nathafw.mapping;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -85,10 +86,51 @@ public class URLProcessor implements AnnotatedClassesProcessor {
             String paramName = getParameterName(param);
             String requestParamName = request.getParameter(paramName) != null ? request.getParameter(paramName) : null;
 
-            args[i] = convertType(requestParamName, param.getType());
+            if (isSimpleType(param.getType()) && requestParamName != null) {
+                args[i] = convertType(requestParamName, param.getType());
+                continue;
+            }
+            
+            try {
+                args[i] = fillObject(param.getType(), request);
+            } catch (Exception e) {
+                throw new RuntimeException("Erreur lors de la population de l'objet", e);
+            }
         }
 
         return args;
+    }
+
+    private Object fillObject(Class<?> clazz, HttpServletRequest request) throws Exception {
+        Object dtoInstance = null;
+        try {
+            dtoInstance = clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de l'instanciation de l'objet : Vérifier que la classe a un constructeur par défaut", e);
+        }
+        Field[] fields = clazz.getDeclaredFields();
+
+        for (Field field : fields) {
+            field.setAccessible(true); 
+
+            String fieldName = field.getName();
+            String rawValue = request.getParameter(fieldName); 
+
+            if (rawValue != null) {
+                Object convertedValue = convertType(rawValue, field.getType());
+                field.set(dtoInstance, convertedValue);
+            }
+        }
+
+        return dtoInstance;
+    }
+
+    private boolean isSimpleType(Class<?> type) {
+        return type.isPrimitive()
+                || type.equals(String.class)
+                || Number.class.isAssignableFrom(type)
+                || type.equals(Boolean.class)
+                || type.equals(Character.class);
     }
 
     private String getParameterName(Parameter param) {

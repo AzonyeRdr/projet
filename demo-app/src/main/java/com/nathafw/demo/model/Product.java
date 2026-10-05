@@ -1,11 +1,13 @@
 package com.nathafw.demo.model;
 
 public class Product {
-    private final int id;
-    private final String name;
-    private final String category;
-    private final double price;
-    private final boolean available;
+    private int id;
+    private String name;
+    private String category;
+    private double price;
+    private boolean available;
+
+    public Product() {}
 
     public Product(int id, String name, String category, double price, boolean available) {
         this.id = id;
