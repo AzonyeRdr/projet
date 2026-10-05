@@ -74,7 +74,7 @@ public class FrontController extends HttpServlet {
             HTTPMethod method = HTTPMethod.buildHTTPMethod(request.getMethod());
             URLKey key = new URLKey(url, method);
 
-            Object result = urlProcessor.executeRequest(key);
+            Object result = urlProcessor.executeRequest(key,request);
 
             if (urlProcessor.isAPIRequest(key)) {
                 sendJSONResponse(response, result);
