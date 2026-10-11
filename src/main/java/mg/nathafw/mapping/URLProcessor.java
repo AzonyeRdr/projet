@@ -1,11 +1,16 @@
 package mg.nathafw.mapping;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 
 import jakarta.servlet.http.HttpServletRequest;
 import mg.nathafw.annotation.APIAnnotation;
@@ -76,32 +81,97 @@ public class URLProcessor implements AnnotatedClassesProcessor {
         Object[] args = new Object[parameters.length];
 
         for (int i = 0; i < parameters.length; i++) {
-            Parameter param = parameters[i];
-
-            if (param.getType().equals(HttpServletRequest.class)) {
-                args[i] = request;
-                continue;
-            }
-
-            String paramName = getParameterName(param);
-            String requestParamName = request.getParameter(paramName) != null ? request.getParameter(paramName) : null;
-
-            if (isSimpleType(param.getType()) && requestParamName != null) {
-                args[i] = convertType(requestParamName, param.getType());
-                continue;
-            }
-            
-            try {
-                args[i] = fillObject(param.getType(), request);
-            } catch (Exception e) {
-                throw new RuntimeException("Erreur lors de la population de l'objet", e);
-            }
+            args[i] = resolveArgument(parameters[i], request);
         }
 
         return args;
     }
 
-    private Object fillObject(Class<?> clazz, HttpServletRequest request) throws Exception {
+    private Object resolveArgument(Parameter param, HttpServletRequest request) {
+        if (param.getType().equals(HttpServletRequest.class)) {
+            return request;
+        }
+
+        String bindingName = getParameterName(param);
+
+        if (List.class.isAssignableFrom(param.getType())) {
+            return resolveListArgument(param, bindingName, request);
+        }
+
+        if (isSimpleType(param.getType())) {
+            String value = request.getParameter(bindingName);
+            if (value == null && param.getType().isPrimitive()) {
+                return convertType(null, param.getType());
+            }
+            if (value != null) {
+                return convertType(value, param.getType());
+            }
+            return null;
+        }
+
+        try {
+            return fillObject(param.getType(), request, bindingName);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la population de l'objet", e);
+        }
+    }
+
+    private Object resolveListArgument(Parameter param, String bindingName, HttpServletRequest request) {
+        Class<?> elementType = getListElementType(param);
+
+        if (elementType == null) {
+            return Collections.emptyList();
+        }
+
+        if (isSimpleType(elementType)) {
+            String[] values = request.getParameterValues(bindingName);
+            if (values == null || values.length == 0) {
+                return Collections.emptyList();
+            }
+
+            List<Object> list = new ArrayList<>();
+            for (String value : values) {
+                list.add(convertType(value, elementType));
+            }
+            return list;
+        }
+
+        Map<Integer, Object> orderedElements = new HashMap<>();
+        Enumeration<String> parameterNames = request.getParameterNames();
+
+        while (parameterNames.hasMoreElements()) {
+            String parameterName = parameterNames.nextElement();
+            IndexedField indexedField = IndexedField.parseIndexedField(parameterName);
+            if (indexedField == null) {
+                continue;
+            }
+
+            if (!indexedField.prefix.equals(bindingName)) {
+                continue;
+            }
+
+            Object element = orderedElements.get(indexedField.index);
+            if (element == null) {
+                element = instantiateType(elementType);
+                orderedElements.put(indexedField.index, element);
+            }
+            if (indexedField.fieldName != null) {
+                applyFieldValue(element, indexedField.fieldName, request.getParameter(parameterName));
+            }
+        }
+
+        if (orderedElements.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Object> list = new ArrayList<>();
+        for (Integer index : new TreeSet<>(orderedElements.keySet())) {
+            list.add(orderedElements.get(index));
+        }
+        return list;
+    }
+
+    private Object fillObject(Class<?> clazz, HttpServletRequest request, String bindingPrefix) throws Exception {
         Object dtoInstance = null;
         try {
             dtoInstance = clazz.getDeclaredConstructor().newInstance();
@@ -111,10 +181,13 @@ public class URLProcessor implements AnnotatedClassesProcessor {
         Field[] fields = clazz.getDeclaredFields();
 
         for (Field field : fields) {
-            field.setAccessible(true); 
+            field.setAccessible(true);
 
             String fieldName = field.getName();
-            String rawValue = request.getParameter(fieldName); 
+            String rawValue = request.getParameter(bindingPrefix + "." + fieldName);
+            if (rawValue == null) {
+                rawValue = request.getParameter(fieldName);
+            }
 
             if (rawValue != null) {
                 Object convertedValue = convertType(rawValue, field.getType());
@@ -133,6 +206,51 @@ public class URLProcessor implements AnnotatedClassesProcessor {
                 || type.equals(Character.class);
     }
 
+    private Class<?> getListElementType(Parameter param) {
+        if (!(param.getParameterizedType() instanceof ParameterizedType parameterizedType)) {
+            return null;
+        }
+
+        if (parameterizedType.getActualTypeArguments().length != 1) {
+            return null;
+        }
+
+        java.lang.reflect.Type elementType = parameterizedType.getActualTypeArguments()[0];
+        if (elementType instanceof Class<?> clazz) {
+            return clazz;
+        }
+
+        return null;
+    }
+
+    private Object instantiateType(Class<?> type) {
+        try {
+            return type.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de l'instanciation de la liste : vérifier que la classe a un constructeur par défaut", e);
+        }
+    }
+
+    private void applyFieldValue(Object target, String fieldName, String rawValue) {
+        try {
+            Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+
+            if (rawValue == null) {
+                if (field.getType().isPrimitive()) {
+                    field.set(target, convertType(null, field.getType()));
+                }
+                return;
+            }
+
+            field.set(target, convertType(rawValue, field.getType()));
+        } catch (NoSuchFieldException ignored) {
+            // Unknown field: ignore to keep binding permissive
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Erreur lors du binding d'un champ de liste", e);
+        }
+    }
+
     private String getParameterName(Parameter param) {
         if (param.isAnnotationPresent(Param.class)) {
             return param.getAnnotation(Param.class).value();
@@ -140,8 +258,36 @@ public class URLProcessor implements AnnotatedClassesProcessor {
         return param.getName();
     }
 
+    
+
     private Object convertType(String value, Class<?> type) {
         if (value == null || value.isEmpty()) {
+            if (type.isPrimitive()) {
+                if (type == boolean.class) {
+                    return false;
+                }
+                if (type == char.class) {
+                    return '\0';
+                }
+                if (type == byte.class) {
+                    return (byte) 0;
+                }
+                if (type == short.class) {
+                    return (short) 0;
+                }
+                if (type == int.class) {
+                    return 0;
+                }
+                if (type == long.class) {
+                    return 0L;
+                }
+                if (type == float.class) {
+                    return 0f;
+                }
+                if (type == double.class) {
+                    return 0d;
+                }
+            }
             return null;
         }
 
@@ -149,8 +295,28 @@ public class URLProcessor implements AnnotatedClassesProcessor {
             return value;
         }
 
+        if (type == char.class || type == Character.class) {
+            return value.charAt(0);
+        }
+
+        if (type == byte.class || type == Byte.class) {
+            return Byte.parseByte(value);
+        }
+
+        if (type == short.class || type == Short.class) {
+            return Short.parseShort(value);
+        }
+
         if (type == int.class || type == Integer.class) {
             return Integer.parseInt(value);
+        }
+
+        if (type == long.class || type == Long.class) {
+            return Long.parseLong(value);
+        }
+
+        if (type == float.class || type == Float.class) {
+            return Float.parseFloat(value);
         }
 
         if (type == double.class || type == Double.class) {
