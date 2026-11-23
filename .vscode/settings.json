@@ -1,0 +1,10 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.import.maven.enabled": true,
+    "java.maven.downloadSources": true,
+    "java.project.importOnFirstTimeStartup": "automatic",
+    "java.project.referencedLibraries": [
+        "${env:HOME}/.m2/repository/mg/natafw/NathaFw-16062026/1.0-SNAPSHOT/NathaFw-16062026-1.0-SNAPSHOT.jar"
+    ],
+    "maven.terminal.useJavaHome": true
+}

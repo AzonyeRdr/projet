@@ -294,14 +294,6 @@ public class Genutil {
         return null;
     }
 
-    private static String normalizeColumnName(String name) {
-        StringBuilder normalized = new StringBuilder();
-        for (String part : name.split("_")) {
-            normalized.append(capitalize(part));
-        }
-        return normalized.toString();
-    }
-
     private static String normalizeForComparison(String name) {
         return name.replace("_", "").toLowerCase(java.util.Locale.ROOT);
     }
@@ -320,13 +312,6 @@ public class Genutil {
             return value;
         }
         return Character.toLowerCase(value.charAt(0)) + value.substring(1);
-    }
-
-    private static String capitalize(String value) {
-        if (value.isEmpty()) {
-            return value;
-        }
-        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     private static final class Property {
