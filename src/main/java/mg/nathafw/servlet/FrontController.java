@@ -15,13 +15,17 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.MultipartConfig;
 import mg.nathafw.err.URLNotSupportedException;
 import mg.nathafw.mapping.HTTPMethod;
 import mg.nathafw.mapping.URLKey;
 import mg.nathafw.mapping.URLProcessor;
+import mg.nathafw.database.DatabaseConfig;
+import mg.nathafw.database.DatabaseManager;
 import mg.nathafw.util.ModelView;
 import mg.nathafw.util.ScanUtil;
 
+@MultipartConfig
 public class FrontController extends HttpServlet {
     private static final String DEFAULT_VIEW_PATH = "/WEB-INF/views";
     private static final Set<String> DEFAULT_VIEW_EXTENSIONS = Set.of("jsp");
@@ -30,6 +34,7 @@ public class FrontController extends HttpServlet {
     private String controllerPackageName;
     private String viewPath;
     private Set<String> viewExtensions;
+    private DatabaseManager databaseManager;
 
     @Override
     public void init() throws ServletException {
@@ -39,6 +44,21 @@ public class FrontController extends HttpServlet {
         }
         viewPath = normalizeViewPath(getInitParameter("VIEW_PATH"));
         viewExtensions = parseViewExtensions(getInitParameter("VIEW_EXTENSIONS"));
+        
+        String databaseUrl = getInitParameter("DB_URL");
+        if (databaseUrl != null && !databaseUrl.trim().isEmpty()) {
+            try {
+                databaseManager = new DatabaseManager(new DatabaseConfig(
+                        databaseUrl,
+                        getInitParameter("DB_USERNAME"),
+                        getInitParameter("DB_PASSWORD"),
+                        getInitParameter("DB_DRIVER")));
+            } catch (ClassNotFoundException e) {
+                throw new ServletException("Pilote JDBC introuvable : " + getInitParameter("DB_DRIVER"), e);
+            } catch (IllegalArgumentException e) {
+                throw new ServletException("Configuration de base de données invalide", e);
+            }
+        }
         urlProcessor = new URLProcessor();
 
         try {
@@ -70,6 +90,9 @@ public class FrontController extends HttpServlet {
             throws ServletException, IOException {
 
         try {
+            if (databaseManager != null) {
+                request.setAttribute(DatabaseManager.REQUEST_ATTRIBUTE, databaseManager);
+            }
             String url = getRequestedUrl(request);
             HTTPMethod method = HTTPMethod.buildHTTPMethod(request.getMethod());
             URLKey key = new URLKey(url, method);
@@ -78,8 +101,8 @@ public class FrontController extends HttpServlet {
 
             if (urlProcessor.isAPIRequest(key)) {
                 sendJSONResponse(response, result);
-            } else if (result instanceof ModelView modelView) {
-                renderModelView(request, response, modelView);
+            } else if (result instanceof ModelView) {
+                renderModelView(request, response, (ModelView) result);
             } else {
                 response.setContentType("text/html");
                 printDebugPage(request, response.getWriter());
@@ -121,7 +144,8 @@ public class FrontController extends HttpServlet {
         }
 
         // Liste
-        if (result instanceof List<?> list) {
+        if (result instanceof List<?>) {
+            List<?> list = (List<?>) result;
             StringBuilder json = new StringBuilder("[");
 
             for (int i = 0; i < list.size(); i++) {
@@ -136,7 +160,8 @@ public class FrontController extends HttpServlet {
         }
 
         // Map
-        if (result instanceof Map<?, ?> map) {
+        if (result instanceof Map<?, ?>) {
+            Map<?, ?> map = (Map<?, ?>) result;
             StringBuilder json = new StringBuilder("{");
 
             int i = 0;
