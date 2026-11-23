@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_1.xsd" version="6.1">
+    <display-name>AM</display-name>
+
+    <servlet>
+        <servlet-name>front-controller</servlet-name>
+        <servlet-class>mg.nathafw.servlet.FrontController</servlet-class>
+        <init-param>
+            <param-name>CONTROLLER_PACKAGE</param-name>
+            <param-value>com.Am.demo.controller</param-value>
+        </init-param>
+        <init-param>
+            <param-name>VIEW_PATH</param-name>
+            <param-value>/WEB-INF/views</param-value>
+        </init-param>
+        <init-param>
+            <param-name>VIEW_EXTENSIONS</param-name>
+            <param-value>jsp,html</param-value>
+        </init-param>
+        <!-- Exemple MySQL : décommenter et adapter les paramètres à votre base. -->
+        <!--
+        <init-param>
+            <param-name>DB_URL</param-name>
+            <param-value>jdbc:mysql://localhost:3306/ma_base</param-value>
+        </init-param>
+        <init-param>
+            <param-name>DB_USERNAME</param-name>
+            <param-value>mon_utilisateur</param-value>
+        </init-param>
+        <init-param>
+            <param-name>DB_PASSWORD</param-name>
+            <param-value>mon_mot_de_passe</param-value>
+        </init-param>
+        <init-param>
+            <param-name>DB_DRIVER</param-name>
+            <param-value>com.mysql.cj.jdbc.Driver</param-value>
+        </init-param>
+        -->
+
+        <init-param>
+            <param-name>DB_URL</param-name>
+            <param-value>jdbc:postgresql://localhost:5432/am</param-value>
+        </init-param>
+        <init-param>
+            <param-name>DB_USERNAME</param-name>
+            <param-value>postgres</param-value>
+        </init-param>
+        <init-param>
+            <param-name>DB_PASSWORD</param-name>
+            <param-value>postgres</param-value>
+        </init-param>
+        <init-param>
+            <param-name>DB_DRIVER</param-name>
+            <param-value>org.postgresql.Driver</param-value>
+        </init-param>
+
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>front-controller</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>default</servlet-name>
+        <url-pattern>/assets/*</url-pattern>
+    </servlet-mapping>
+</web-app>
