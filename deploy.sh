@@ -3,7 +3,10 @@
 TOMCAT_PATH="/opt/tomcat"
 
 echo "Construction et installation du framework dans le dépôt local..."
-mvn -f . clean install
+if ! mvn -f . clean install; then
+    echo "Échec de compilation du framework; arrêt du déploiement."
+    exit 1
+fi
 
 FRAMEWORK_JAR=$(find ./target -maxdepth 1 -type f -name "*.jar" \
     ! -name "*sources*" \
@@ -19,5 +22,5 @@ else
 fi
 
 # Déployer aussi le WAR de demo-app (si présent)
-cd demo-app
+cd demo-app || exit 1
 ./deploy.sh

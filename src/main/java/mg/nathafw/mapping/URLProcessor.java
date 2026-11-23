@@ -4,6 +4,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.io.IOException;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -13,6 +19,8 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import jakarta.servlet.http.HttpServletRequest;
+import mg.nathafw.database.DatabaseManager;
+import jakarta.servlet.http.Part;
 import mg.nathafw.annotation.APIAnnotation;
 import mg.nathafw.annotation.MyController;
 import mg.nathafw.annotation.URLAnnotation;
@@ -90,6 +98,14 @@ public class URLProcessor implements AnnotatedClassesProcessor {
     private Object resolveArgument(Parameter param, HttpServletRequest request) {
         if (param.getType().equals(HttpServletRequest.class)) {
             return request;
+        }
+
+        if (param.getType().equals(DatabaseManager.class)) {
+            Object databaseManager = request.getAttribute(DatabaseManager.REQUEST_ATTRIBUTE);
+            if (databaseManager == null) {
+                throw new IllegalStateException("Base non configurée. Définissez DB_URL dans web.xml.");
+            }
+            return databaseManager;
         }
 
         String bindingName = getParameterName(param);
@@ -184,6 +200,14 @@ public class URLProcessor implements AnnotatedClassesProcessor {
             field.setAccessible(true);
 
             String fieldName = field.getName();
+            if (field.getType().equals(FileUpload.class)) {
+                Part part = getUploadPart(request, bindingPrefix, fieldName);
+                if (part != null && part.getSubmittedFileName() != null && !part.getSubmittedFileName().isEmpty()) {
+                    field.set(dtoInstance, toFileUpload(part));
+                }
+                continue;
+            }
+
             String rawValue = request.getParameter(bindingPrefix + "." + fieldName);
             if (rawValue == null) {
                 rawValue = request.getParameter(fieldName);
@@ -198,26 +222,56 @@ public class URLProcessor implements AnnotatedClassesProcessor {
         return dtoInstance;
     }
 
+    private Part getUploadPart(HttpServletRequest request, String bindingPrefix, String fieldName) {
+        try {
+            Part part = request.getPart(bindingPrefix + "." + fieldName);
+            if (part == null) {
+                part = request.getPart(fieldName);
+            }
+            return part;
+        } catch (IOException | jakarta.servlet.ServletException e) {
+            throw new RuntimeException("Erreur lors de la récupération du fichier " + fieldName, e);
+        }
+    }
+
+    private FileUpload toFileUpload(Part part) {
+        try (var input = part.getInputStream()) {
+            byte[] bytes = input.readAllBytes();
+            Byte[] contenu = new Byte[bytes.length];
+            for (int i = 0; i < bytes.length; i++) {
+                contenu[i] = bytes[i];
+            }
+            return new FileUpload(part.getSubmittedFileName(), contenu);
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lors de la lecture du fichier " + part.getSubmittedFileName(), e);
+        }
+    }
+
     private boolean isSimpleType(Class<?> type) {
         return type.isPrimitive()
                 || type.equals(String.class)
                 || Number.class.isAssignableFrom(type)
                 || type.equals(Boolean.class)
-                || type.equals(Character.class);
+                || type.equals(Character.class)
+                || type.equals(Date.class)
+                || type.equals(Timestamp.class)
+                || type.equals(LocalDate.class)
+                || type.equals(LocalDateTime.class);
     }
 
     private Class<?> getListElementType(Parameter param) {
-        if (!(param.getParameterizedType() instanceof ParameterizedType parameterizedType)) {
+        if (!(param.getParameterizedType() instanceof ParameterizedType)) {
             return null;
         }
+        ParameterizedType parameterizedType = (ParameterizedType) param.getParameterizedType();
 
         if (parameterizedType.getActualTypeArguments().length != 1) {
             return null;
         }
 
         java.lang.reflect.Type elementType = parameterizedType.getActualTypeArguments()[0];
-        if (elementType instanceof Class<?> clazz) {
-            return clazz;
+        if (elementType instanceof Class<?>) {
+            return (Class<?>) elementType;
         }
 
         return null;
@@ -325,6 +379,40 @@ public class URLProcessor implements AnnotatedClassesProcessor {
 
         if (type == boolean.class || type == Boolean.class) {
             return Boolean.parseBoolean(value);
+        }
+
+        if (type == Date.class) {
+            try {
+                return Date.valueOf(value.trim());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Format de date invalide. Format attendu : yyyy-MM-dd", e);
+            }
+        }
+
+        if (type == Timestamp.class) {
+            try {
+                return Timestamp.valueOf(value.trim().replace('T', ' '));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Format de date invalide. Format attendu : yyyy-MM-dd HH:mm:ss", e);
+            }
+        }
+
+        if (type == LocalDate.class) {
+            try {
+                return LocalDate.parse(value.trim());
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Format de date invalide. Format attendu : yyyy-MM-dd", e);
+            }
+        }
+
+        if (type == LocalDateTime.class) {
+            try {
+                return LocalDateTime.parse(value.trim().replace(' ', 'T'));
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException(
+                        "Format de date invalide. Format attendu : yyyy-MM-ddTHH:mm:ss",
+                        e);
+            }
         }
 
         throw new IllegalArgumentException("Type de conversion non supporté: " + type.getName());

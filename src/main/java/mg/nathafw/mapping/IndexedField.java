@@ -1,11 +1,8 @@
 package mg.nathafw.mapping;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IndexedField {
 
-    private static final Pattern INDEXED_FIELD_PATTERN = Pattern.compile("^(.+?)\\[(\\d+)](?:\\.(.+))?$");
     public final String prefix;
     public final int index;
     final String fieldName;
